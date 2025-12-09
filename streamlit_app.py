@@ -1,7 +1,14 @@
 # streamlit_app.py
 import streamlit as st
 from datetime import datetime
-from streamlit.components.v1 import html
+
+# -----------------------------
+# 日本語曜日対応
+# -----------------------------
+weekday_jp = {
+    "Mon":"月", "Tue":"火", "Wed":"水", "Thu":"木",
+    "Fri":"金", "Sat":"土", "Sun":"日"
+}
 
 # -----------------------------
 # 料金・オプション設定
@@ -17,14 +24,15 @@ option_prices = {
     "その他の衣装":1000, "局部奉仕":8000, "アナル奉仕":5000, "その他":0
 }
 
+# -----------------------------
+# 場所料金
+# -----------------------------
 locations = {
-    "新宿(歌舞伎町)/渋谷(道玄坂) / 鶯谷":0,
-    "池袋/五反田/錦糸町":1000,
-    "アルファイン":3000,
-    "その他":0
+    "新宿(歌舞伎町)/渋谷(道玄坂)/鶯谷": 0,
+    "池袋/五反田/錦糸町": 1000,
+    "アルファイン": 3000,
+    "その他": 0
 }
-
-weekday_jp = {"Mon":"月", "Tue":"火", "Wed":"水", "Thu":"木", "Fri":"金", "Sat":"土", "Sun":"日"}
 
 # -----------------------------
 # フォーム入力
@@ -43,11 +51,11 @@ extra_fee = st.number_input("特別追加料金（任意）", min_value=0, step=
 other_text = st.text_input("その他（任意）")
 
 # -----------------------------
-# 合計金額計算
+# 金額計算
 # -----------------------------
 play_fee = play_prices.get(play_time, 0)
-location_fee = locations.get(location,0)
 option_fee = sum(option_prices.get(opt, 0) for opt in options_selected)
+location_fee = locations.get(location,0)
 total_fee = play_fee + option_fee + extra_fee + location_fee
 
 # -----------------------------
@@ -61,9 +69,22 @@ def reservation_info():
     weekday = weekday_jp[dt.strftime("%a")]
     lines = [
         "‐‐‐‐‐‐‐‐",
-        "【ご予約内容】",
-        f"{dt.month}月{dt.day}日（{weekday}） {start_time}〜（{play_time}分枠）",
-        f"場所：{location}（料金：¥{location_fee}）"
+        "【基本情報】",
+        f"名前　{name}",
+        f"メールアドレス　{email}" if email else "メールアドレス　",
+        f"電話番号　{phone}" if phone else "電話番号　",
+        f"場所　{location}",
+        f"日付　{date_str}（{weekday}）",
+        f"開始時刻　{start_time}〜",
+        f"プレイ時間（分枠）　{play_time}",
+        f"オプション　{format_options(options_selected)}" if options_selected else "オプション　",
+        f"特別追加料金　¥{extra_fee}" if extra_fee else "",
+        f"その他　{other_text}" if other_text else "",
+        "",
+        "‐‐‐‐‐‐‐‐",
+        "【予約情報】",
+        f"{date_str}（{weekday}） {start_time}〜（{play_time}分枠）",
+        f"場所：{location}",
     ]
     if options_selected:
         lines.append(f"オプション：{format_options(options_selected)}")
@@ -73,27 +94,17 @@ def reservation_info():
         lines.append(f"その他　{other_text}")
     lines.append(f"合計：¥{total_fee}")
     lines.append("‐‐‐‐‐‐‐‐")
-    return "\n".join(lines)
-
-basic_info = f"""・基本情報
-名前　{name}
-メールアドレス　{email}
-電話番号　{phone}
-場所　{location}（料金：¥{location_fee}）
-日付　{date_str}
-開始時刻　{start_time}〜
-プレイ時間（分枠）　{play_time}
-オプション（複数可）　{format_options(options_selected)}
-特別追加料金　¥{extra_fee if extra_fee else 0}
-その他　{other_text if other_text else ''}"""
+    return "\n".join([line for line in lines if line.strip() != ""])
 
 reservation_text = reservation_info()
 
 # -----------------------------
-# DM文章
+# DM文章生成
 # -----------------------------
-dm_texts = {
-    "DM①最初": f"""ご連絡ありがとうございます。
+def dm_text1():
+    dt = datetime.strptime(date_str, "%Y/%m/%d")
+    weekday = weekday_jp[dt.strftime("%a")]
+    return f"""ご連絡ありがとうございます。
 
 {date_str}（{weekday}）{start_time}〜の{play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
 
@@ -104,8 +115,10 @@ dm_texts = {
 https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
 
 ご不明な点がございましたら、どうぞお気軽にご連絡ください。
-""",
-    "DM②カウンセリング後": f"""カウンセリングフォームへのご記入、ありがとうございました☺️
+"""
+
+def dm_text2():
+    return f"""カウンセリングフォームへのご記入、ありがとうございました☺️
 
 以下の日時でご予約を確定させていただきます。
 
@@ -119,8 +132,10 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 
 お会いできるのを楽しみにしております。
 引き続きよろしくお願いいたします✨
-""",
-    "DM③前日確認": f"""
+"""
+
+def dm_text3():
+    return f"""
 いよいよ明日ですね！前日確認のご連絡です。
 
 {reservation_text}
@@ -134,10 +149,15 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 
 どうぞよろしくお願いいたします！
 """
+
+dm_texts = {
+    "DM①最初": dm_text1(),
+    "DM②カウンセリング後": dm_text2(),
+    "DM③前日確認": dm_text3()
 }
 
 # -----------------------------
-# メール文章（DMに宛名・件名・最後にむぎ茶を追加）
+# メール文章生成
 # -----------------------------
 mail_texts = {
     "メール①最初": f"件名：仮予約のご案内（{date_str} {start_time}〜）/むぎ茶\n{name} 様\n\n{dm_texts['DM①最初']}\nむぎ茶",
@@ -148,25 +168,21 @@ mail_texts = {
 # -----------------------------
 # 選択表示
 # -----------------------------
-pattern = st.selectbox("出力したい文章", ["基本情報", "予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys()))
+pattern = st.selectbox(
+    "出力したい文章",
+    ["基本情報+予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys())
+)
 
 # -----------------------------
-# 出力エリア＋コピー
+# 文章生成・コピー
 # -----------------------------
 if st.button("文章を生成"):
-    if pattern == "基本情報":
-        text_to_show = basic_info
-    elif pattern == "予約情報":
-        text_to_show = reservation_text
+    if pattern == "基本情報+予約情報":
+        text_to_display = reservation_text
     elif pattern in dm_texts:
-        text_to_show = dm_texts[pattern]
+        text_to_display = dm_texts[pattern]
     else:
-        text_to_show = mail_texts[pattern]
+        text_to_display = mail_texts[pattern]
 
-    # コピー用テキストエリア
-    html(f"""
-    <textarea id="text-to-copy" style="width:100%; height:300px;">{text_to_show}</textarea><br>
-    <button onclick="navigator.clipboard.writeText(document.getElementById('text-to-copy').value)">
-        📋 コピー
-    </button>
-    """, height=350)
+    st.text_area("生成文章", value=text_to_display, height=400)
+    st.button("コピー", on_click=lambda: st.experimental_set_query_params(copy=text_to_display))
