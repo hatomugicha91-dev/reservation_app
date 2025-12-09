@@ -37,9 +37,10 @@ location_prices = {
 }
 
 # -----------------------------
-# 曜日表記（日本語）
+# 曜日表記
 # -----------------------------
 weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
+weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # -----------------------------
 # UI：フォーム（基本情報）
@@ -67,10 +68,11 @@ with st.form(key="info_form"):
             option_other_fee = st.number_input("オプションのその他（金額 ¥）", min_value=0, step=100, value=0)
         inp_extra_fee = st.number_input("特別追加料金（任意 ¥）", min_value=0, step=100, value=0)
         inp_other_text = st.text_input("その他（任意）", value="")
+
     submitted = st.form_submit_button("フォームに反映")
 
 # -----------------------------
-# ヘルパー：金額計算・表示整形
+# ヘルパー
 # -----------------------------
 def format_options(opts):
     return "・".join([o for o in opts if o != "その他(特別料金)"] + (["その他"] if "その他(特別料金)" in opts else []))
@@ -86,27 +88,24 @@ def jpy(n):
     return f"¥{int(n):,}"
 
 # -----------------------------
-# 生成テキスト作成
+# 生成テキスト
 # -----------------------------
 def make_basic_info():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
     play_minutes = inp_play_time
     opt_text = format_options(inp_options)
-    lines = [
-        "【基本情報】",
-        f"名前　{inp_name}"
-    ]
+    lines = []
+    lines.append("【基本情報】")
+    lines.append(f"名前　{inp_name}")
     if inp_email:
         lines.append(f"メールアドレス　{inp_email}")
     if inp_phone:
         lines.append(f"電話番号　{inp_phone}")
-    lines.extend([
-        f"場所　{loc_choice}",
-        f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）",
-        f"開始時刻　{dt.strftime('%H:%M')}～",
-        f"プレイ時間（分枠）　{play_minutes}"
-    ])
+    lines.append(f"場所　{loc_choice}")
+    lines.append(f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）")
+    lines.append(f"開始時刻　{dt.strftime('%H:%M')}～")
+    lines.append(f"プレイ時間（分枠）　{play_minutes}")
     if opt_text:
         lines.append(f"オプション（複数可）　{opt_text}")
     if inp_extra_fee:
@@ -119,12 +118,11 @@ def make_reservation_info():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
     play_fee, loc_fee, option_fee, total = calc_total(inp_play_time, loc_choice, loc_extra, inp_options, option_other_fee, inp_extra_fee)
-    lines = [
-        "‐‐‐‐‐‐‐‐",
-        "【ご予約内容】",
-        f"{dt.month}月{dt.day}日（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）",
-        f"場所：{loc_choice}"
-    ]
+    lines = []
+    lines.append("‐‐‐‐‐‐‐‐")
+    lines.append("【ご予約内容】")
+    lines.append(f"{dt.month}月{dt.day}日（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）")
+    lines.append(f"場所：{loc_choice}")
     if inp_options:
         lines.append(f"オプション：{format_options(inp_options)}")
     if option_other_fee:
@@ -133,16 +131,17 @@ def make_reservation_info():
         lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
     if inp_other_text:
         lines.append(f"その他　{inp_other_text}")
-    lines.append(f"\n合計：{jpy(total)}")
+    lines.append("")
+    lines.append(f"合計：{jpy(total)}")
     lines.append("‐‐‐‐‐‐‐‐")
     return "\n".join(lines)
 
 # -----------------------------
-# DM / メールテンプレ作成
+# DM / メール
 # -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
-    weekday = weekday_jp[dt.weekday()]  # 日本語に変更
+    weekday = weekday_en[dt.weekday()]
     return f"""ご連絡ありがとうございます。
 
 {dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
@@ -189,8 +188,9 @@ def make_dm3():
 """
 
 def make_mail1():
-    subject = f"件名：仮予約のご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）/むぎ茶"
-    header = f"{inp_name} 様" if inp_name else ""
+    dt = datetime.combine(inp_date, inp_time)
+    subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
+    header = f"{inp_name} 様\n\n"
     return f"""{subject}
 
 {header}
@@ -202,7 +202,7 @@ def make_mail1():
 
 def make_mail2():
     subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
-    header = f"{inp_name} 様" if inp_name else ""
+    header = f"{inp_name} 様\n\n"
     return f"""{subject}
 
 {header}
@@ -214,7 +214,7 @@ def make_mail2():
 
 def make_mail3():
     subject = f"件名：前日確認のご案内 /むぎ茶"
-    header = f"{inp_name} 様" if inp_name else ""
+    header = f"{inp_name} 様\n\n"
     return f"""{subject}
 
 {header}
@@ -272,7 +272,7 @@ if st.button("生成"):
       btn.addEventListener('click', () => {{
         const s=document.getElementById('copystatus');
         s.textContent=' コピーしました ✔';
-        setTimeout(()=>s.textContent='',2000);
+        setTimeout(()=> s.textContent='', 2000);
       }});
     </script>
     """
