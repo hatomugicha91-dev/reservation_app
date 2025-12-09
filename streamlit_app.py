@@ -36,9 +36,6 @@ location_prices = {
     "その他（特別料金）": 0
 }
 
-# -----------------------------
-# 曜日表記（日本語）
-# -----------------------------
 weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
 
 # -----------------------------
@@ -58,20 +55,23 @@ with st.form(key="info_form"):
         inp_date = st.date_input("日付", value=datetime.now().date())
         inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00", "%H:%M").time())
         loc_choice = st.selectbox("場所（選択）", options=list(location_prices.keys()), index=list(location_prices.keys()).index("渋谷（道玄坂）"))
+
         loc_extra = 0
         if loc_choice == "その他（特別料金）":
             loc_extra = st.number_input("その他（場所）特別料金（¥）", min_value=0, step=100, value=0)
+
         inp_options = st.multiselect("オプション（複数選択可）", options=list(option_prices.keys()))
         option_other_fee = 0
         if "その他(特別料金)" in inp_options:
             option_other_fee = st.number_input("オプションのその他（金額 ¥）", min_value=0, step=100, value=0)
+
         inp_extra_fee = st.number_input("特別追加料金（任意 ¥）", min_value=0, step=100, value=0)
         inp_other_text = st.text_input("その他（任意）", value="")
 
     submitted = st.form_submit_button("フォームに反映")
 
 # -----------------------------
-# ヘルパー
+# ヘルパー関数
 # -----------------------------
 def format_options(opts):
     return "・".join([o for o in opts if o != "その他(特別料金)"] + (["その他"] if "その他(特別料金)" in opts else []))
@@ -87,7 +87,7 @@ def jpy(n):
     return f"¥{int(n):,}"
 
 # -----------------------------
-# 既存の生成関数
+# 情報生成関数
 # -----------------------------
 def make_basic_info():
     dt = datetime.combine(inp_date, inp_time)
@@ -136,7 +136,7 @@ def make_reservation_info():
     return "\n".join(lines)
 
 # -----------------------------
-# 既存 DM / メール（すべて日本語曜日）
+# DM / メール生成（通常）
 # -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
@@ -221,7 +221,7 @@ def make_mail3():
 """
 
 # -----------------------------
-# ── ここから追加：当日予約パターン（4つ）
+# 当日予約 DM / メール
 # -----------------------------
 def make_dm_today1():
     dt = datetime.combine(inp_date, inp_time)
@@ -246,7 +246,6 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 """
 
 def make_dm_today2():
-    # カウンセリング入力後（当日）
     return f"""カウンセリングフォームへのご記入、ありがとうございました☺️
 
 本日のご予約を確定させていただきます。
@@ -271,12 +270,9 @@ def make_mail_today1():
     return f"""{subject}
 
 {header}
-ご連絡ありがとうございます。
-
 本日{dt.strftime('%Y/%m/%d')}（{weekday_jp[dt.weekday()]}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
 
 ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。
-お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。
 
 （プレイ予定の２時間前までにご入力が無ければ、キャンセル扱いとなります。）
 
@@ -284,10 +280,6 @@ def make_mail_today1():
 https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
 
 カウンセリングフォームへの入力が済みましたら、一度ご連絡頂けましたら幸いです。
-
-お会いできるのを楽しみにしています。
-
-よろしくお願いいたします。
 
 むぎ茶
 """
@@ -304,18 +296,11 @@ def make_mail_today2():
 ★ホテルに到着されましたら
 ホテル名とお部屋番号をご連絡ください。
 
-早めにお知らせいただけますと、スムーズにお伺いすることができます。
-
-ご不明な点がございましたら、どうぞお気軽にご連絡ください。
-
-お会いできるのを心より楽しみにしております。
-よろしくお願い致します♡
-
 むぎ茶
 """
 
 # -----------------------------
-# 出力選択 UI（既存に当日予約パターンを追加）
+# 出力 UI
 # -----------------------------
 st.markdown("---")
 st.subheader("■ 出力選択")
@@ -362,25 +347,24 @@ if st.button("生成"):
     else:
         out_text = make_mail_today2()
 
-    # safe-escaped HTML for display + copy button (use id to avoid querySelector ambiguity)
     escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    html = f"""<div>
+    html = f"""
+<div>
   <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
   <button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
   <span id="copystatus" style="margin-left:10px;"></span>
 </div>
+
 <script>
   const btn = document.getElementById('copybtn');
   btn.addEventListener('click', () => {{
     const textarea = document.getElementById('out');
     navigator.clipboard.writeText(textarea.value).then(() => {{
       const s = document.getElementById('copystatus');
-      s.textContent = ' コピーしました ✔';
+      s.textContent = 'コピーしました ✔';
       setTimeout(()=> s.textContent = '', 2000);
     }});
   }});
-</script>"""
-    components.html(html, height=420)
-
-st.markdown("---")
-st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力してください。特別追加料金は任意で入力できます。")
+</script>
+"""
+    components.html(html, height=450)
