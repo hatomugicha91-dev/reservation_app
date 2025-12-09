@@ -59,32 +59,36 @@ location_fee = locations.get(location,0)
 total_fee = play_fee + option_fee + extra_fee + location_fee
 
 # -----------------------------
-# 予約情報生成
+# 基本情報・予約情報生成
 # -----------------------------
 def format_options(opts):
     return "・".join(opts) if opts else ""
 
-def reservation_info():
+def basic_info():
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     weekday = weekday_jp[dt.strftime("%a")]
     lines = [
-        "‐‐‐‐‐‐‐‐",
-        "【基本情報】",
-        f"名前　{name}",
-        f"メールアドレス　{email}" if email else "メールアドレス　",
-        f"電話番号　{phone}" if phone else "電話番号　",
-        f"場所　{location}",
+        "名前　" + name,
+        "メールアドレス　" + (email if email else ""),
+        "電話番号　" + (phone if phone else ""),
+        "場所　" + location,
         f"日付　{date_str}（{weekday}）",
         f"開始時刻　{start_time}〜",
         f"プレイ時間（分枠）　{play_time}",
         f"オプション　{format_options(options_selected)}" if options_selected else "オプション　",
         f"特別追加料金　¥{extra_fee}" if extra_fee else "",
         f"その他　{other_text}" if other_text else "",
-        "",
+    ]
+    return "\n".join([line for line in lines if line.strip() != ""])
+
+def reservation_info():
+    dt = datetime.strptime(date_str, "%Y/%m/%d")
+    weekday = weekday_jp[dt.strftime("%a")]
+    lines = [
         "‐‐‐‐‐‐‐‐",
         "【予約情報】",
         f"{date_str}（{weekday}） {start_time}〜（{play_time}分枠）",
-        f"場所：{location}",
+        f"場所：{location}"
     ]
     if options_selected:
         lines.append(f"オプション：{format_options(options_selected)}")
@@ -94,8 +98,9 @@ def reservation_info():
         lines.append(f"その他　{other_text}")
     lines.append(f"合計：¥{total_fee}")
     lines.append("‐‐‐‐‐‐‐‐")
-    return "\n".join([line for line in lines if line.strip() != ""])
+    return "\n".join(lines)
 
+basic_text = basic_info()
 reservation_text = reservation_info()
 
 # -----------------------------
@@ -166,18 +171,20 @@ mail_texts = {
 }
 
 # -----------------------------
-# 選択表示
+# 出力選択
 # -----------------------------
 pattern = st.selectbox(
     "出力したい文章",
-    ["基本情報+予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys())
+    ["基本情報", "予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys())
 )
 
 # -----------------------------
-# 文章生成・コピー
+# 文章生成
 # -----------------------------
 if st.button("文章を生成"):
-    if pattern == "基本情報+予約情報":
+    if pattern == "基本情報":
+        text_to_display = basic_text
+    elif pattern == "予約情報":
         text_to_display = reservation_text
     elif pattern in dm_texts:
         text_to_display = dm_texts[pattern]
