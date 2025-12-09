@@ -190,7 +190,7 @@ def make_dm3():
 def make_mail1():
     dt = datetime.combine(inp_date, inp_time)
     subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
-    header = f"{inp_name} 様\n\n"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
 {header}
@@ -202,7 +202,7 @@ def make_mail1():
 
 def make_mail2():
     subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
-    header = f"{inp_name} 様\n\n"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
 {header}
@@ -214,7 +214,7 @@ def make_mail2():
 
 def make_mail3():
     subject = f"件名：前日確認のご案内 /むぎ茶"
-    header = f"{inp_name} 様\n\n"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
 {header}
