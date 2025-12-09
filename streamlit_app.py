@@ -37,7 +37,7 @@ location_prices = {
 }
 
 # -----------------------------
-# 曜日表記
+# 曜日表記（日本語）
 # -----------------------------
 weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
 
@@ -87,48 +87,56 @@ def jpy(n):
     return f"¥{int(n):,}"
 
 # -----------------------------
-# 生成関数
+# 基本情報・予約情報生成
 # -----------------------------
 def make_basic_info():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
+    play_minutes = inp_play_time
     opt_text = format_options(inp_options)
-    lines = [
-        "【基本情報】",
-        f"名前　{inp_name}"
-    ]
-    if inp_email: lines.append(f"メールアドレス　{inp_email}")
-    if inp_phone: lines.append(f"電話番号　{inp_phone}")
-    lines += [
-        f"場所　{loc_choice}",
-        f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）",
-        f"開始時刻　{dt.strftime('%H:%M')}～",
-        f"プレイ時間（分枠）　{inp_play_time}"
-    ]
-    if opt_text: lines.append(f"オプション（複数可）　{opt_text}")
-    if inp_extra_fee: lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
-    if inp_other_text: lines.append(f"その他　{inp_other_text}")
+    lines = []
+    lines.append("【基本情報】")
+    lines.append(f"名前　{inp_name}")
+    if inp_email:
+        lines.append(f"メールアドレス　{inp_email}")
+    if inp_phone:
+        lines.append(f"電話番号　{inp_phone}")
+    lines.append(f"場所　{loc_choice}")
+    lines.append(f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）")
+    lines.append(f"開始時刻　{dt.strftime('%H:%M')}～")
+    lines.append(f"プレイ時間（分枠）　{play_minutes}")
+    if opt_text:
+        lines.append(f"オプション（複数可）　{opt_text}")
+    if inp_extra_fee:
+        lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+    if inp_other_text:
+        lines.append(f"その他　{inp_other_text}")
     return "\n".join(lines)
 
 def make_reservation_info():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
     play_fee, loc_fee, option_fee, total = calc_total(inp_play_time, loc_choice, loc_extra, inp_options, option_other_fee, inp_extra_fee)
-    lines = [
-        "‐‐‐‐‐‐‐‐",
-        "【ご予約内容】",
-        f"{dt.month}月{dt.day}日（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）",
-        f"場所：{loc_choice}"
-    ]
-    if inp_options: lines.append(f"オプション：{format_options(inp_options)}")
-    if option_other_fee: lines.append(f"オプション（その他）　{jpy(option_other_fee)}")
-    if inp_extra_fee: lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
-    if inp_other_text: lines.append(f"その他　{inp_other_text}")
-    lines += ["", f"合計：{jpy(total)}", "‐‐‐‐‐‐‐‐"]
+    lines = []
+    lines.append("‐‐‐‐‐‐‐‐")
+    lines.append("【ご予約内容】")
+    lines.append(f"{dt.strftime('%m月%d日')}（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）")
+    lines.append(f"場所：{loc_choice}")
+    if inp_options:
+        lines.append(f"オプション：{format_options(inp_options)}")
+    if option_other_fee:
+        lines.append(f"オプション（その他）　{jpy(option_other_fee)}")
+    if inp_extra_fee:
+        lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+    if inp_other_text:
+        lines.append(f"その他　{inp_other_text}")
+    lines.append("")
+    lines.append(f"合計：{jpy(total)}")
+    lines.append("‐‐‐‐‐‐‐‐")
     return "\n".join(lines)
 
 # -----------------------------
-# DM / メール
+# DM・メール生成
 # -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
@@ -137,9 +145,13 @@ def make_dm1():
 
 {dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
 
-ご予約の確定には、カウンセリングフォームのご記入が必要です。
-▶︎フォーム
+ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。
+お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。
+
+▶︎カウンセリングフォーム
 https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
+
+ご不明な点がございましたら、どうぞお気軽にご連絡ください。
 """
 
 def make_dm2():
@@ -149,8 +161,14 @@ def make_dm2():
 
 {make_reservation_info()}
 
-前日には最終確認のご連絡を差し上げます。
-当日の無断キャンセルは料金の100%を頂戴しております。
+ご質問や追加のご希望などがありましたら、お気軽にお知らせください。
+
+前日にはこちらから最終確認のご連絡を差し上げます。
+なお、当日の無断キャンセルは料金の100%を頂戴しております。
+ご変更がある場合は、前日確認の時までにお知らせいただけますと幸いです。
+
+お会いできるのを楽しみにしております。
+引き続きよろしくお願いいたします✨
 """
 
 def make_dm3():
@@ -158,57 +176,73 @@ def make_dm3():
 
 {make_reservation_info()}
 
-ホテルに到着されましたらお部屋番号をご連絡ください。
+当日ホテルに到着されましたら
+★ホテル名とお部屋番号をご連絡ください。
+
+早めにお知らせいただけますと、スムーズにお伺いすることができます。
+
+明日お会いできるのを心より楽しみにしています。
+
+どうぞよろしくお願いいたします！
 """
 
 def make_mail1():
     dt = datetime.combine(inp_date, inp_time)
     subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
-{inp_name} 様
-
+{header}
 {make_dm1()}
 
 むぎ茶
 """
 
 def make_mail2():
-    # ★件名を固定で入れる（当日予約メール②）
-    subject = "件名：本日のご予約確定のご案内/むぎ茶"
+    subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
-{inp_name} 様
-
+{header}
 {make_dm2()}
 
 むぎ茶
 """
 
 def make_mail3():
-    subject = "件名：前日確認のご案内 /むぎ茶"
+    subject = f"件名：前日確認のご案内 /むぎ茶"
+    header = f"{inp_name} 様\n"
     return f"""{subject}
 
-{inp_name} 様
-
+{header}
 {make_dm3()}
 
 むぎ茶
 """
 
 # -----------------------------
-# 当日予約パターン
+# 当日予約パターン（参考文面に完全準拠）
 # -----------------------------
 def make_dm_today1():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
-    return f"""ご連絡ありがとうございます。
+    return f"""ご連絡ありがとうございます。 
 
-本日{dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+本日{dt.strftime('%m月%d日')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
 
-ご予約確定にはカウンセリングフォームのご記入が必要です。
-▶︎フォーム
-https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
+ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。 
+お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。 
+
+（プレイ予定の２時間前までにご入力が無ければ、キャンセル扱いとなります。）
+
+▶︎カウンセリングフォーム 
+https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform 
+
+カウンセリングフォームへの入力が済みましたら、一度ご連絡頂けましたら幸いです。
+
+お会いできるのを楽しみにしています。
+
+よろしくお願いいたします。
 """
 
 def make_dm_today2():
@@ -218,36 +252,54 @@ def make_dm_today2():
 
 {make_reservation_info()}
 
-★ホテルに到着されましたらホテル名とお部屋番号をご連絡ください。
+★ホテルに到着されましたら 
+ホテル名とお部屋番号をご連絡ください。 
 
-ご不明な点がございましたら、お気軽にご連絡ください。
+早めにお知らせいただけますと、スムーズにお伺いすることができます。 
+
+ご不明な点がございましたら、どうぞお気軽にご連絡ください。 
+
+お会いできるのを心より楽しみにしております。 
+よろしくお願い致します♡
 """
 
 def make_mail_today1():
     dt = datetime.combine(inp_date, inp_time)
-    subject = "件名： 仮予約のご案内（要確認）/むぎ茶"
     weekday = weekday_jp[dt.weekday()]
+    subject = "件名： 仮予約のご案内（要確認）/むぎ茶"
     return f"""{subject}
 
 {inp_name} 様
 
-ご連絡ありがとうございます。
 
-本日{dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+ご連絡ありがとうございます。 
 
-ご予約確定にはカウンセリングフォームのご記入が必要です。
-▶︎フォーム
-https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
+本日{dt.strftime('%m月%d日')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+
+ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。 
+お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。 
+
+（プレイ予定の２時間前までにご入力が無ければ、キャンセル扱いとなります。）
+
+▶︎カウンセリングフォーム 
+https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform 
+
+カウンセリングフォームへの入力が済みましたら、一度ご連絡頂けましたら幸いです。
+
+お会いできるのを楽しみにしています。
+
+よろしくお願いいたします。
+
 
 むぎ茶
 """
 
 def make_mail_today2():
-    # ★件名を固定で入れる
     subject = "件名：本日のご予約確定のご案内/むぎ茶"
     return f"""{subject}
 
 {inp_name} 様
+
 
 カウンセリングフォームへのご記入、ありがとうございました☺️
 
@@ -255,7 +307,16 @@ def make_mail_today2():
 
 {make_reservation_info()}
 
-★ホテルに到着されましたらホテル名とお部屋番号をご連絡ください。
+★ホテルに到着されましたら 
+ホテル名とお部屋番号をご連絡ください。 
+
+早めにお知らせいただけますと、スムーズにお伺いすることができます。 
+
+ご不明な点がございましたら、どうぞお気軽にご連絡ください。 
+
+お会いできるのを心より楽しみにしております。 
+よろしくお願い致します♡
+
 
 むぎ茶
 """
@@ -309,25 +370,27 @@ if st.button("生成"):
         out_text = make_mail_today2()
 
     escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    html = f"""
-<div>
-<textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
-<button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
-<span id="copystatus" style="margin-left:10px;"></span>
+    html = f"""<div>
+  <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
+  <button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
+  <span id="copystatus" style="margin-left:10px;"></span>
 </div>
 <script>
-const btn = document.getElementById('copybtn');
-btn.addEventListener('click', () => {{
-  const textarea = document.getElementById('out');
-  navigator.clipboard.writeText(textarea.value).then(() => {{
-    const s = document.getElementById('copystatus');
-    s.textContent = ' コピーしました ✔';
-    setTimeout(()=> s.textContent='', 2000);
+  const btn = document.getElementById('copybtn');
+  btn.addEventListener('click', () => {{
+    const textarea = document.getElementById('out');
+    navigator.clipboard.writeText(textarea.value).then(() => {{
+      const s = document.getElementById('copystatus');
+      s.textContent = ' コピーしました ✔';
+      setTimeout(()=> s.textContent = '', 2000);
+    }});
   }});
-}});
-</script>
-"""
+</script>"""
     components.html(html, height=420)
 
 st.markdown("---")
 st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力してください。特別追加料金は任意で入力できます。")
+
+st.markdown("---")
+st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力してください。特別追加料金は任意で入力できます。")
+
