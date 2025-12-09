@@ -36,16 +36,17 @@ location_prices = {
     "その他（特別料金）": 0
 }
 
-# 曜日表記
-weekday_jp = ["月","火","水","木","金","土","日"]
-weekday_en = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+# -----------------------------
+# 曜日表記（日本語）
+# -----------------------------
+weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
 
 # -----------------------------
 # UI：フォーム（基本情報）
 # -----------------------------
 st.title("予約・DM・メール自動生成ツール")
-st.markdown("### ■ 基本情報入力")
 
+st.markdown("### ■ 基本情報入力")
 with st.form(key="info_form"):
     col1, col2 = st.columns(2)
     with col1:
@@ -55,7 +56,7 @@ with st.form(key="info_form"):
         inp_play_time = st.selectbox("プレイ時間（分枠）", options=list(play_prices.keys()), index=list(play_prices.keys()).index("120"))
     with col2:
         inp_date = st.date_input("日付", value=datetime.now().date())
-        inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00","%H:%M").time())
+        inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00", "%H:%M").time())
         loc_choice = st.selectbox("場所（選択）", options=list(location_prices.keys()), index=list(location_prices.keys()).index("渋谷（道玄坂）"))
         loc_extra = 0
         if loc_choice == "その他（特別料金）":
@@ -69,15 +70,15 @@ with st.form(key="info_form"):
     submitted = st.form_submit_button("フォームに反映")
 
 # -----------------------------
-# ヘルパー
+# ヘルパー：金額計算・表示整形
 # -----------------------------
 def format_options(opts):
     return "・".join([o for o in opts if o != "その他(特別料金)"] + (["その他"] if "その他(特別料金)" in opts else []))
 
 def calc_total(play_key, loc_key, loc_extra_val, opts, opt_other_fee, extra_fee_val):
-    play_fee = play_prices.get(play_key,0)
-    loc_fee = location_prices.get(loc_key,0) + (loc_extra_val or 0)
-    option_fee = sum(option_prices.get(o,0) for o in opts) + (opt_other_fee or 0)
+    play_fee = play_prices.get(play_key, 0)
+    loc_fee = location_prices.get(loc_key, 0) + (loc_extra_val or 0)
+    option_fee = sum(option_prices.get(o, 0) for o in opts) + (opt_other_fee or 0)
     total = play_fee + loc_fee + option_fee + (extra_fee_val or 0)
     return play_fee, loc_fee, option_fee, total
 
@@ -85,25 +86,33 @@ def jpy(n):
     return f"¥{int(n):,}"
 
 # -----------------------------
-# 生成テキスト
+# 生成テキスト作成
 # -----------------------------
 def make_basic_info():
     dt = datetime.combine(inp_date, inp_time)
     weekday = weekday_jp[dt.weekday()]
+    play_minutes = inp_play_time
     opt_text = format_options(inp_options)
     lines = [
         "【基本情報】",
         f"名前　{inp_name}"
     ]
-    if inp_email: lines.append(f"メールアドレス　{inp_email}")
-    if inp_phone: lines.append(f"電話番号　{inp_phone}")
-    lines.append(f"場所　{loc_choice}")
-    lines.append(f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）")
-    lines.append(f"開始時刻　{dt.strftime('%H:%M')}～")
-    lines.append(f"プレイ時間（分枠）　{inp_play_time}")
-    if opt_text: lines.append(f"オプション（複数可）　{opt_text}")
-    if inp_extra_fee: lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
-    if inp_other_text: lines.append(f"その他　{inp_other_text}")
+    if inp_email:
+        lines.append(f"メールアドレス　{inp_email}")
+    if inp_phone:
+        lines.append(f"電話番号　{inp_phone}")
+    lines.extend([
+        f"場所　{loc_choice}",
+        f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）",
+        f"開始時刻　{dt.strftime('%H:%M')}～",
+        f"プレイ時間（分枠）　{play_minutes}"
+    ])
+    if opt_text:
+        lines.append(f"オプション（複数可）　{opt_text}")
+    if inp_extra_fee:
+        lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+    if inp_other_text:
+        lines.append(f"その他　{inp_other_text}")
     return "\n".join(lines)
 
 def make_reservation_info():
@@ -124,13 +133,16 @@ def make_reservation_info():
         lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
     if inp_other_text:
         lines.append(f"その他　{inp_other_text}")
-    lines.append(f"合計：{jpy(total)}")
+    lines.append(f"\n合計：{jpy(total)}")
     lines.append("‐‐‐‐‐‐‐‐")
     return "\n".join(lines)
 
+# -----------------------------
+# DM / メールテンプレ作成
+# -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
-    weekday = weekday_en[dt.weekday()]
+    weekday = weekday_jp[dt.weekday()]  # 日本語に変更
     return f"""ご連絡ありがとうございます。
 
 {dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
@@ -177,9 +189,7 @@ def make_dm3():
 """
 
 def make_mail1():
-    dt = datetime.combine(inp_date, inp_time)
-    weekday = weekday_en[dt.weekday()]
-    subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
+    subject = f"件名：仮予約のご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）/むぎ茶"
     header = f"{inp_name} 様" if inp_name else ""
     return f"""{subject}
 
@@ -250,24 +260,22 @@ if st.button("生成"):
     else:
         out_text = make_mail3()
 
-    # -----------------------------
-    # コピー付きテキストエリア
-    # -----------------------------
-    escaped = out_text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-    html = f"""<div>
-  <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
-  <button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
-  <span id="copystatus" style="margin-left:10px;"></span>
-</div>
-<script>
-  const btn = document.getElementById('copybtn');
-  btn.addEventListener('click', () => {{
-      const s = document.getElementById('copystatus');
-      navigator.clipboard.writeText(document.getElementById('out').value);
-      s.textContent = ' コピーしました ✔';
-      setTimeout(()=> s.textContent = '', 2000);
-  }});
-</script>"""
+    escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    html = f"""
+    <div>
+      <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
+      <button onclick="navigator.clipboard.writeText(document.getElementById('out').value)" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
+      <span id="copystatus" style="margin-left:10px;"></span>
+    </div>
+    <script>
+      const btn = document.querySelector('button');
+      btn.addEventListener('click', () => {{
+        const s=document.getElementById('copystatus');
+        s.textContent=' コピーしました ✔';
+        setTimeout(()=>s.textContent='',2000);
+      }});
+    </script>
+    """
     components.html(html, height=420)
 
 st.markdown("---")
