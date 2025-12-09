@@ -40,7 +40,6 @@ location_prices = {
 # 曜日表記
 # -----------------------------
 weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
-weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # -----------------------------
 # UI：フォーム（基本情報）
@@ -137,11 +136,11 @@ def make_reservation_info():
     return "\n".join(lines)
 
 # -----------------------------
-# DM / メール
+# DM / メール（すべて日本語曜日）
 # -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
-    weekday = weekday_en[dt.weekday()]
+    weekday = weekday_jp[dt.weekday()]
     return f"""ご連絡ありがとうございます。
 
 {dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
@@ -194,7 +193,6 @@ def make_mail1():
     return f"""{subject}
 
 {header}
-
 {make_dm1()}
 
 むぎ茶
@@ -206,7 +204,6 @@ def make_mail2():
     return f"""{subject}
 
 {header}
-
 {make_dm2()}
 
 むぎ茶
@@ -218,7 +215,6 @@ def make_mail3():
     return f"""{subject}
 
 {header}
-
 {make_dm3()}
 
 むぎ茶
