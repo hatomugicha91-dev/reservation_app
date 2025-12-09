@@ -78,3 +78,165 @@ if special_fee:
         special_price = nums[0]
 
 total = base_price + place_price + option_price + special_price
+
+import streamlit.components.v1 as components
+
+# -----------------------------
+# 生成関数
+# -----------------------------
+def make_basic_info():
+    lines = [
+        "【基本情報】",
+        f"名前　{name}",
+    ]
+    if email:
+        lines.append(f"メールアドレス　{email}")
+    if tel:
+        lines.append(f"電話番号　{tel}")
+    lines += [
+        f"場所　{full_place}",
+        f"日付　{date_str}（{weekday}）",
+        f"開始時刻　{start_time.strftime('%H:%M')}～",
+        f"プレイ時間（分）　{play_time}",
+        f"オプション（複数可）　{option_list}" if options else "",
+        special_fee_block.strip(),
+        other_block.strip()
+    ]
+    return "\n".join([l for l in lines if l])
+
+def make_reservation_info():
+    lines = [
+        "‐‐‐‐‐‐‐‐",
+        "【ご予約内容】",
+        f"{date_str}（{weekday}） {start_time.strftime('%H:%M')}～（{play_time}分枠）",
+        f"場所：{full_place}",
+        f"オプション：{option_list}" if options else "",
+        special_fee_block.strip(),
+        other_block.strip(),
+        "",
+        f"合計：¥{total:,}",
+        "‐‐‐‐‐‐‐‐"
+    ]
+    return "\n".join([l for l in lines if l])
+
+# -----------------------------
+# DM / メールテンプレート
+# -----------------------------
+def make_dm1():
+    return f"""ご連絡ありがとうございます。
+
+{date_str}（{weekday}） {start_time.strftime('%H:%M')}〜の{play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+
+ご予約確定にはカウンセリングフォームのご記入が必要です。
+▶︎フォーム
+https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
+"""
+
+def make_dm2():
+    return f"""カウンセリングフォームへのご記入ありがとうございました☺️
+
+以下の日時でご予約を確定しました。
+
+{make_reservation_info()}
+
+前日確認のご連絡を差し上げます。
+当日無断キャンセルは100%料金を頂戴します。
+"""
+
+def make_dm3():
+    return f"""前日確認のご連絡です。
+
+{make_reservation_info()}
+
+ホテルに到着されましたらお部屋番号をご連絡ください。
+"""
+
+def make_mail1():
+    subject = f"件名：仮予約のご案内（{date_str} {start_time.strftime('%H:%M')}〜）/むぎ茶"
+    return f"""{subject}
+
+{name} 様
+
+{make_dm1()}
+
+むぎ茶
+"""
+
+def make_mail2():
+    # ←ここを修正：件名を固定で入れる
+    subject = "件名：本日のご予約確定のご案内/むぎ茶"
+    return f"""{subject}
+
+{name} 様
+
+{make_dm2()}
+
+むぎ茶
+"""
+
+def make_mail3():
+    subject = "件名：前日確認のご案内 /むぎ茶"
+    return f"""{subject}
+
+{name} 様
+
+{make_dm3()}
+
+むぎ茶
+"""
+
+# -----------------------------
+# 出力選択
+# -----------------------------
+choice = st.selectbox("出力するテンプレを選択してください", options=[
+    "基本情報",
+    "予約情報",
+    "DM①（最初）",
+    "DM②（カウンセリング後）",
+    "DM③（前日確認）",
+    "メール①（最初）",
+    "メール②（カウンセリング後）",
+    "メール③（前日確認）"
+])
+
+if st.button("生成"):
+    if choice == "基本情報":
+        out_text = make_basic_info()
+    elif choice == "予約情報":
+        out_text = make_reservation_info()
+    elif choice == "DM①（最初）":
+        out_text = make_dm1()
+    elif choice == "DM②（カウンセリング後）":
+        out_text = make_dm2()
+    elif choice == "DM③（前日確認）":
+        out_text = make_dm3()
+    elif choice == "メール①（最初）":
+        out_text = make_mail1()
+    elif choice == "メール②（カウンセリング後）":
+        out_text = make_mail2()  # 件名修正済み
+    else:
+        out_text = make_mail3()
+
+    # コピー用HTML
+    escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    html = f"""
+<div>
+<textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
+<button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
+<span id="copystatus" style="margin-left:10px;"></span>
+</div>
+<script>
+const btn = document.getElementById('copybtn');
+btn.addEventListener('click', () => {{
+  const textarea = document.getElementById('out');
+  navigator.clipboard.writeText(textarea.value).then(() => {{
+    const s = document.getElementById('copystatus');
+    s.textContent = ' コピーしました ✔';
+    setTimeout(()=> s.textContent='', 2000);
+  }});
+}});
+</script>
+"""
+    components.html(html, height=420)
+
+st.caption("※特別料金は任意で入力できます。")
