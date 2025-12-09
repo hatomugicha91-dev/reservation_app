@@ -1,17 +1,12 @@
 # streamlit_app.py
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime
 
-# -----------------------------
-# 日本語曜日対応
-# -----------------------------
-weekday_jp = {
-    "Mon":"月", "Tue":"火", "Wed":"水", "Thu":"木",
-    "Fri":"金", "Sat":"土", "Sun":"日"
-}
+st.set_page_config(page_title="予約・DM・メール自動生成", layout="centered")
 
 # -----------------------------
-# 料金・オプション設定
+# マスタデータ（料金等）
 # -----------------------------
 play_prices = {
     "60": 20000, "90": 25000, "120": 30000, "150": 45000, "180": 55000,
@@ -20,98 +15,138 @@ play_prices = {
 }
 
 option_prices = {
-    "無し":0, "乳首舐め":2000, "聖水":3000, "ボンデージ":1000,
-    "その他の衣装":1000, "局部奉仕":8000, "アナル奉仕":5000, "その他":0
+    "無し": 0,
+    "乳首舐め": 2000,
+    "聖水": 3000,
+    "ボンデージ": 1000,
+    "その他の衣装": 1000,
+    "局部奉仕": 8000,
+    "アナル奉仕": 5000,
+    "その他(特別料金)": 0
 }
 
-# -----------------------------
-# 場所料金
-# -----------------------------
-locations = {
-    "新宿(歌舞伎町)/渋谷(道玄坂)/鶯谷": 0,
-    "池袋/五反田/錦糸町": 1000,
+location_prices = {
+    "新宿（歌舞伎町）": 0,
+    "渋谷（道玄坂）": 0,
+    "鶯谷": 0,
+    "池袋": 1000,
+    "五反田": 1000,
+    "錦糸町": 1000,
     "アルファイン": 3000,
-    "その他": 0
+    "その他（特別料金）": 0
 }
 
 # -----------------------------
-# フォーム入力
+# 曜日表記
 # -----------------------------
-st.title("予約・DM・メール文章生成（非公開用）")
-
-name = st.text_input("名前")
-email = st.text_input("メールアドレス（任意）")
-phone = st.text_input("電話番号（任意）")
-date_str = st.text_input("日付", "2025/12/1")
-start_time = st.text_input("開始時刻", "15:00")
-location = st.selectbox("場所", options=list(locations.keys()))
-play_time = st.selectbox("プレイ時間（分枠）", options=list(play_prices.keys()))
-options_selected = st.multiselect("オプション（複数可）", list(option_prices.keys()))
-extra_fee = st.number_input("特別追加料金（任意）", min_value=0, step=100, format="%d")
-other_text = st.text_input("その他（任意）")
+weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
+weekday_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # -----------------------------
-# 金額計算
+# UI：フォーム（基本情報）
 # -----------------------------
-play_fee = play_prices.get(play_time, 0)
-option_fee = sum(option_prices.get(opt, 0) for opt in options_selected)
-location_fee = locations.get(location,0)
-total_fee = play_fee + option_fee + extra_fee + location_fee
+st.title("予約・DM・メール自動生成ツール")
+
+st.markdown("### ■ 基本情報入力")
+with st.form(key="info_form"):
+    col1, col2 = st.columns(2)
+    with col1:
+        inp_name = st.text_input("名前", value="")
+        inp_email = st.text_input("メールアドレス（任意）", value="")
+        inp_phone = st.text_input("電話番号（任意）", value="")
+        inp_play_time = st.selectbox("プレイ時間（分枠）", options=list(play_prices.keys()), index=list(play_prices.keys()).index("120"))
+    with col2:
+        inp_date = st.date_input("日付", value=datetime.now().date())
+        inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00", "%H:%M").time())
+        loc_choice = st.selectbox("場所（選択）", options=list(location_prices.keys()), index=list(location_prices.keys()).index("渋谷（道玄坂）"))
+        loc_extra = 0
+        if loc_choice == "その他（特別料金）":
+            loc_extra = st.number_input("その他（場所）特別料金（¥）", min_value=0, step=100, value=0)
+        inp_options = st.multiselect("オプション（複数選択可）", options=list(option_prices.keys()))
+        option_other_fee = 0
+        if "その他(特別料金)" in inp_options:
+            option_other_fee = st.number_input("オプションのその他（金額 ¥）", min_value=0, step=100, value=0)
+        inp_extra_fee = st.number_input("特別追加料金（任意 ¥）", min_value=0, step=100, value=0)
+        inp_other_text = st.text_input("その他（任意）", value="")
+
+    submitted = st.form_submit_button("フォームに反映")
 
 # -----------------------------
-# 基本情報・予約情報生成
+# ヘルパー
 # -----------------------------
 def format_options(opts):
-    return "・".join(opts) if opts else ""
+    # 「その他(特別料金)」を「その他」と表示
+    return "・".join([o for o in opts if o != "その他(特別料金)"] + (["その他"] if "その他(特別料金)" in opts else []))
 
-def basic_info():
-    dt = datetime.strptime(date_str, "%Y/%m/%d")
-    weekday = weekday_jp[dt.strftime("%a")]
+def calc_total(play_key, loc_key, loc_extra_val, opts, opt_other_fee, extra_fee_val):
+    play_fee = play_prices.get(play_key, 0)
+    loc_fee = location_prices.get(loc_key, 0) + (loc_extra_val or 0)
+    option_fee = sum(option_prices.get(o, 0) for o in opts) + (opt_other_fee or 0)
+    total = play_fee + loc_fee + option_fee + (extra_fee_val or 0)
+    return play_fee, loc_fee, option_fee, total
+
+def jpy(n):
+    return f"¥{int(n):,}"
+
+# -----------------------------
+# 生成テキスト作成
+# -----------------------------
+def make_basic_info():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_jp[dt.weekday()]
+    opt_text = format_options(inp_options)
     lines = [
-        "名前　" + name,
-        "メールアドレス　" + (email if email else ""),
-        "電話番号　" + (phone if phone else ""),
-        "場所　" + location,
-        f"日付　{date_str}（{weekday}）",
-        f"開始時刻　{start_time}〜",
-        f"プレイ時間（分枠）　{play_time}",
-        f"オプション　{format_options(options_selected)}" if options_selected else "オプション　",
-        f"特別追加料金　¥{extra_fee}" if extra_fee else "",
-        f"その他　{other_text}" if other_text else "",
+        "【基本情報】",
+        f"名前　{inp_name}"
     ]
-    return "\n".join([line for line in lines if line.strip() != ""])
+    if inp_email:
+        lines.append(f"メールアドレス　{inp_email}")
+    if inp_phone:
+        lines.append(f"電話番号　{inp_phone}")
+    lines.append(f"場所　{loc_choice}")
+    lines.append(f"日付　{dt.strftime('%Y/%m/%d')}（{weekday}）")
+    lines.append(f"開始時刻　{dt.strftime('%H:%M')}～")
+    lines.append(f"プレイ時間（分枠）　{inp_play_time}")
+    if opt_text:
+        lines.append(f"オプション（複数可）　{opt_text}")
+    if inp_extra_fee:
+        lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+    if inp_other_text:
+        lines.append(f"その他　{inp_other_text}")
+    return "\n".join(lines)
 
-def reservation_info():
-    dt = datetime.strptime(date_str, "%Y/%m/%d")
-    weekday = weekday_jp[dt.strftime("%a")]
+def make_reservation_info():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_jp[dt.weekday()]
+    play_fee, loc_fee, option_fee, total = calc_total(inp_play_time, loc_choice, loc_extra, inp_options, option_other_fee, inp_extra_fee)
     lines = [
         "‐‐‐‐‐‐‐‐",
-        "【予約情報】",
-        f"{date_str}（{weekday}） {start_time}〜（{play_time}分枠）",
-        f"場所：{location}"
+        "【ご予約内容】",
+        f"{dt.month}月{dt.day}日（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）",
+        f"場所：{loc_choice}"
     ]
-    if options_selected:
-        lines.append(f"オプション：{format_options(options_selected)}")
-    if extra_fee:
-        lines.append(f"特別追加料金　¥{extra_fee}")
-    if other_text:
-        lines.append(f"その他　{other_text}")
-    lines.append(f"合計：¥{total_fee}")
+    if inp_options:
+        lines.append(f"オプション：{format_options(inp_options)}")
+    if option_other_fee:
+        lines.append(f"オプション（その他）　{jpy(option_other_fee)}")
+    if inp_extra_fee:
+        lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+    if inp_other_text:
+        lines.append(f"その他　{inp_other_text}")
+    lines.append("")
+    lines.append(f"合計：{jpy(total)}")
     lines.append("‐‐‐‐‐‐‐‐")
     return "\n".join(lines)
 
-basic_text = basic_info()
-reservation_text = reservation_info()
-
 # -----------------------------
-# DM文章生成
+# DM / メールテンプレ作成
 # -----------------------------
-def dm_text1():
-    dt = datetime.strptime(date_str, "%Y/%m/%d")
-    weekday = weekday_jp[dt.strftime("%a")]
+def make_dm1():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_en[dt.weekday()]
     return f"""ご連絡ありがとうございます。
 
-{date_str}（{weekday}）{start_time}〜の{play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+{dt.strftime('%Y/%m/%d')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
 
 ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。
 お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。
@@ -122,12 +157,12 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 ご不明な点がございましたら、どうぞお気軽にご連絡ください。
 """
 
-def dm_text2():
+def make_dm2():
     return f"""カウンセリングフォームへのご記入、ありがとうございました☺️
 
 以下の日時でご予約を確定させていただきます。
 
-{reservation_text}
+{make_reservation_info()}
 
 ご質問や追加のご希望などがありましたら、お気軽にお知らせください。
 
@@ -139,13 +174,12 @@ def dm_text2():
 引き続きよろしくお願いいたします✨
 """
 
-def dm_text3():
-    return f"""
-いよいよ明日ですね！前日確認のご連絡です。
+def make_dm3():
+    return f"""いよいよ明日ですね！前日確認のご連絡です。
 
-{reservation_text}
+{make_reservation_info()}
 
-明日ホテルに到着されましたら
+当日ホテルに到着されましたら
 ★ホテル名とお部屋番号をご連絡ください。
 
 早めにお知らせいただけますと、スムーズにお伺いすることができます。
@@ -155,40 +189,97 @@ def dm_text3():
 どうぞよろしくお願いいたします！
 """
 
-dm_texts = {
-    "DM①最初": dm_text1(),
-    "DM②カウンセリング後": dm_text2(),
-    "DM③前日確認": dm_text3()
-}
+def make_mail1():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_en[dt.weekday()]
+    subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
+    header = f"{inp_name} 様" if inp_name else ""
+    return f"""{subject}
+
+{header}
+
+{make_dm1()}
+
+むぎ茶
+"""
+
+def make_mail2():
+    subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
+    header = f"{inp_name} 様" if inp_name else ""
+    return f"""{subject}
+
+{header}
+
+{make_dm2()}
+
+むぎ茶
+"""
+
+def make_mail3():
+    subject = f"件名：前日確認のご案内 /むぎ茶"
+    header = f"{inp_name} 様" if inp_name else ""
+    return f"""{subject}
+
+{header}
+
+{make_dm3()}
+
+むぎ茶
+"""
 
 # -----------------------------
-# メール文章生成
+# 出力選択 UI
 # -----------------------------
-mail_texts = {
-    "メール①最初": f"件名：仮予約のご案内（{date_str} {start_time}〜）/むぎ茶\n{name} 様\n\n{dm_texts['DM①最初']}\nむぎ茶",
-    "メール②カウンセリング後": f"件名：【確定】ご予約についてのご案内（{date_str} {start_time}〜）\n{name} 様\n\n{dm_texts['DM②カウンセリング後']}\nむぎ茶",
-    "メール③前日確認": f"件名：前日確認のご案内 /むぎ茶\n{name} 様\n\n{dm_texts['DM③前日確認']}\nむぎ茶"
-}
+st.markdown("---")
+st.subheader("■ 出力選択")
+choice = st.selectbox("出力するテンプレを選択してください",
+                      options=[
+                          "基本情報",
+                          "予約情報",
+                          "DM①（最初）",
+                          "DM②（カウンセリング後）",
+                          "DM③（前日確認）",
+                          "メール①（最初）",
+                          "メール②（カウンセリング後）",
+                          "メール③（前日確認）"
+                      ])
 
-# -----------------------------
-# 出力選択
-# -----------------------------
-pattern = st.selectbox(
-    "出力したい文章",
-    ["基本情報", "予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys())
-)
-
-# -----------------------------
-# 文章生成
-# -----------------------------
-if st.button("文章を生成"):
-    if pattern == "基本情報":
-        text_to_display = basic_text
-    elif pattern == "予約情報":
-        text_to_display = reservation_text
-    elif pattern in dm_texts:
-        text_to_display = dm_texts[pattern]
+if st.button("生成"):
+    if choice == "基本情報":
+        out_text = make_basic_info()
+    elif choice == "予約情報":
+        out_text = make_reservation_info()
+    elif choice == "DM①（最初）":
+        out_text = make_dm1()
+    elif choice == "DM②（カウンセリング後）":
+        out_text = make_dm2()
+    elif choice == "DM③（前日確認）":
+        out_text = make_dm3()
+    elif choice == "メール①（最初）":
+        out_text = make_mail1()
+    elif choice == "メール②（カウンセリング後）":
+        out_text = make_mail2()
     else:
-        text_to_display = mail_texts[pattern]
+        out_text = make_mail3()
 
-    st.text_area("生成文章", value=text_to_display, height=400)
+    # コピー用HTML
+    escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    html = f"""
+    <div>
+      <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
+      <button onclick="navigator.clipboard.writeText(document.getElementById('out').value)" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
+      <span id="copystatus" style="margin-left:10px;"></span>
+    </div>
+    <script>
+      const btn = document.querySelector('button');
+      btn.addEventListener('click', () => {{
+        const s = document.getElementById('copystatus');
+        s.textContent = ' コピーしました ✔';
+        setTimeout(()=> s.textContent = '', 2000);
+      }});
+    </script>
+    """
+    components.html(html, height=420)
+
+st.markdown("---")
+st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力してください。特別追加料金は任意で入力できます。")
