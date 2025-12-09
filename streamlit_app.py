@@ -1,138 +1,126 @@
-# streamlit_app.py
 import streamlit as st
 from datetime import datetime
 
-# -----------------------------
-# 料金・オプション設定
-# -----------------------------
-play_prices = {
-    "60": 20000, "90": 25000, "120": 30000, "150": 45000, "180": 55000,
-    "210": 65000, "240": 75000, "270": 85000, "300": 95000, "330": 105000,
-    "オールナイト": 120000, "特殊料金": 0
-}
+st.set_page_config(page_title="DM & メール自動生成ツール", layout="wide")
 
-option_prices = {
-    "無し":0, "乳首舐め":2000, "聖水":3000, "ボンデージ":1000,
-    "その他の衣装":1000, "局部奉仕":8000, "アナル奉仕":5000, "その他(特別料金)":0
-}
+# -------------------------
+# 日本語の曜日
+# -------------------------
+weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
 
-# -----------------------------
-# フォーム入力
-# -----------------------------
-st.title("予約・DM・メール文章生成（非公開用）")
+def format_datetime(dt):
+    """日本語曜日つき日時整形"""
+    w = weekday_jp[dt.weekday()]
+    return dt.strftime(f"%m/%d（{w}）%H:%M")
 
-name = st.text_input("名前")
-email = st.text_input("メールアドレス（任意）")
-phone = st.text_input("電話番号（任意）")
-date_str = st.text_input("日付", "2025/12/1")
-start_time = st.text_input("開始時刻", "15:00")
-location = st.text_input("場所", "渋谷・道玄坂")
-play_time = st.selectbox("プレイ時間（分枠）", options=list(play_prices.keys()))
-options_selected = st.multiselect("オプション（複数可）", list(option_prices.keys()))
-extra_fee = st.number_input("特別追加料金（任意）", min_value=0, step=100, format="%d")
-other_text = st.text_input("その他（任意）")
+# -------------------------
+# プルダウン選択肢
+# -------------------------
+AREA_OPTIONS = [
+    "新宿（歌舞伎町）", "渋谷（道玄坂）", "鶯谷",
+    "池袋", "五反田", "錦糸町", "アルファイン"
+]
 
-# -----------------------------
-# 合計金額計算
-# -----------------------------
-play_fee = play_prices.get(play_time, 0)
-option_fee = sum(option_prices.get(opt, 0) for opt in options_selected)
-total_fee = play_fee + option_fee + extra_fee
+# -------------------------
+# UI：タイトル
+# -------------------------
+st.title("DM & メール自動生成ツール（改良版）")
 
-# -----------------------------
-# 予約情報生成
-# -----------------------------
-def format_options(opts):
-    return "・".join(opts) if opts else ""
+# -------------------------
+# 入力フォーム
+# -------------------------
+st.subheader("■ 入力欄")
 
-def reservation_info():
-    dt = datetime.strptime(date_str, "%Y/%m/%d")
-    lines = [
-        "‐‐‐‐‐‐‐‐",
-        "【ご予約内容】",
-        f"{dt.month}月{dt.day}日（{dt.strftime('%a')}） {start_time}〜（{play_time}分枠）",
-        f"場所：{location}"
-    ]
-    if options_selected:
-        lines.append(f"オプション：{format_options(options_selected)}")
-    if extra_fee:
-        lines.append(f"特別追加料金　　¥{extra_fee}")
-    if other_text:
-        lines.append(f"その他　{other_text}")
-    lines.append(f"合計：¥{total_fee}")
-    lines.append("‐‐‐‐‐‐‐‐")
-    return "\n".join(lines)
+col1, col2 = st.columns(2)
 
-reservation_text = reservation_info()
+with col1:
+    name = st.text_input("お客様の名前（例：ひろ 様）")
+    date = st.date_input("日付")
+    time = st.time_input("開始時間")
+    duration = st.selectbox("コース時間", ["60分", "90分", "120分", "150分", "180分", "210分", "240分"])
 
-# -----------------------------
-# DM文章
-# -----------------------------
-dm_texts = {
-    "DM①最初": f"""ご連絡ありがとうございます。
+with col2:
+    area = st.selectbox("場所（プルダウン復活）", AREA_OPTIONS)
+    option = st.text_input("特別料金など（任意・空欄OK）")
+    extra = f"＋{option}" if option else ""
 
-{date_str}（月）{start_time}〜の{play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+# 合体した日時
+dt = datetime.combine(date, time)
+dt_str = format_datetime(dt)
 
-ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。
-お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。
+# -------------------------
+# 出力テンプレ生成関数
+# -------------------------
+def dm_1():
+    return f"""
+{name}
 
-▶︎カウンセリングフォーム
-https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform
+ご連絡ありがとうございます☺️
 
-ご不明な点がございましたら、どうぞお気軽にご連絡ください。
-""",
-    "DM②カウンセリング後": f"""カウンセリングフォームへのご記入、ありがとうございました☺️
+【ご予約内容】
+{date.month}月{date.day}日（{weekday_jp[date.weekday()]}） {time.strftime("%H:%M")}〜  
+{duration}枠  
+場所：{area}{extra}
 
-以下の日時でご予約を確定させていただきます。
-
-{reservation_text}
-
-ご質問や追加のご希望などがありましたら、お気軽にお知らせください。
-
-前日にはこちらから最終確認のご連絡を差し上げます。
-なお、当日の無断キャンセルは料金の100%を頂戴しております。
-ご変更がある場合は、前日確認の時までにお知らせいただけますと幸いです。
-
-お会いできるのを楽しみにしております。
-引き続きよろしくお願いいたします✨
-""",
-    "DM③前日確認": f"""
-いよいよ明日ですね！前日確認のご連絡です。
-
-{reservation_text}
-
-明日ホテルに到着されましたら
-★ホテル名とお部屋番号をご連絡ください。
-
-早めにお知らせいただけますと、スムーズにお伺いすることができます。
-
-明日お会いできるのを心より楽しみにしています。
-
-どうぞよろしくお願いいたします！
+どうぞよろしくお願いいたします。
 """
-}
 
-# -----------------------------
-# メール文章（DMに宛名・件名・最後にむぎ茶を追加）
-# -----------------------------
-mail_texts = {
-    "メール①最初": f"件名：仮予約のご案内（{date_str} {start_time}〜）/むぎ茶\n{name} 様\n\n{dm_texts['DM①最初']}\nむぎ茶",
-    "メール②カウンセリング後": f"件名：【確定】ご予約についてのご案内（{date_str} {start_time}〜）\n{name} 様\n\n{dm_texts['DM②カウンセリング後']}\nむぎ茶",
-    "メール③前日確認": f"件名：前日確認のご案内 /むぎ茶\n{name} 様\n\n{dm_texts['DM③前日確認']}\nむぎ茶"
-}
+def dm_2():
+    return f"""
+{name}
 
-# -----------------------------
-# 選択表示
-# -----------------------------
-pattern = st.selectbox("出力したい文章", ["全部情報", "予約情報"] + list(dm_texts.keys()) + list(mail_texts.keys()))
+こちらこそありがとうございます！
 
-# -----------------------------
-# 出力エリア
-# -----------------------------
-if st.button("文章を生成"):
-    if pattern in ["全部情報","予約情報"]:
-        st.text_area("生成文章", reservation_text, height=300)
-    elif pattern in dm_texts:
-        st.text_area("生成文章", dm_texts[pattern], height=300)
-    else:
-        st.text_area("生成文章", mail_texts[pattern], height=300)
+【ご予約内容】
+{date.month}月{date.day}日（{weekday_jp[date.weekday()]}) {time.strftime("%H:%M")}〜  
+{duration}枠  
+場所：{area}{extra}
+
+それでは当日、お待ちしております☺️
+"""
+
+def dm_3():
+    return f"""
+{name}
+
+ご連絡ありがとうございます。
+
+【ご予約内容】
+{date.month}月{date.day}日（{weekday_jp[date.weekday()]}） {time.strftime("%H:%M")}〜  
+{duration}枠  
+場所：{area}{extra}
+
+どうぞよろしくお願いいたします。
+"""
+
+# メールテンプレ
+def mail_1():
+    return f"""
+{name}
+
+ご予約ありがとうございます。
+
+【ご予約内容】
+日時：{dt_str}
+コース：{duration}
+場所：{area}{extra}
+
+何かご不明点ございましたらお気軽にご連絡ください。
+"""
+
+# -------------------------
+# 出力欄
+# -------------------------
+st.subheader("■ 生成されたテンプレート")
+
+tabs = st.tabs(["DM①（丁寧）", "DM②（柔らかめ）", "DM③（シンプル）", "メール①"])
+
+templates = [dm_1(), dm_2(), dm_3(), mail_1()]
+
+for tab, text in zip(tabs, templates):
+    with tab:
+        st.text_area("内容", text, height=250)
+        st.button("コピーする", type="primary", key=text, on_click=lambda t=text: st.session_state.__setitem__("copy", t))
+        if "copy" in st.session_state and st.session_state["copy"] == text:
+            st.success("コピーしました ✔")
+
