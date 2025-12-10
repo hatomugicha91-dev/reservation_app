@@ -11,7 +11,7 @@ st.set_page_config(page_title="予約・DM・メール自動生成", layout="cen
 play_prices = {
     "60": 20000,
     "90": 25000,
-    "120": 35000,   # ← ここを 35,000 に変更済
+    "120": 35000,   # 120分だけ 35,000円 に変更済み
     "150": 45000,
     "180": 55000,
     "210": 65000,
@@ -90,8 +90,10 @@ inp_other_text = st.text_input("その他（任意）", value="")
 # ヘルパー
 # -----------------------------
 def format_options(opts):
-    return "・".join([o for o in opts if o != "その他(特別料金)"] +
-                     (["その他"] if "その他(特別料金)" in opts else []))
+    return "・".join(
+        [o for o in opts if o != "その他(特別料金)"] +
+        (["その他"] if "その他(特別料金)" in opts else [])
+    )
 
 def calc_total(play_key, loc_key, loc_extra_val, opts, opt_other_fee, extra_fee_val):
     play_fee = play_prices.get(play_key, 0)
@@ -188,9 +190,7 @@ def make_dm3():
 
 def make_mail1():
     dt = datetime.combine(inp_date, inp_time)
-    weekday = weekday_jp[dt.weekday()]
     subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
-
     return f"""{subject}
 
 {inp_name} 様
@@ -202,7 +202,6 @@ def make_mail1():
 
 def make_mail2():
     subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
-
     return f"""{subject}
 
 {inp_name} 様
@@ -214,7 +213,6 @@ def make_mail2():
 
 def make_mail3():
     subject = "件名：前日確認のご案内 /むぎ茶"
-
     return f"""{subject}
 
 {inp_name} 様
@@ -225,7 +223,7 @@ def make_mail3():
 """
 
 # -----------------------------
-# 当日予約（あなたの参考テキストそのまま）
+# 当日予約
 # -----------------------------
 def make_dm_today1():
     dt = datetime.combine(inp_date, inp_time)
@@ -326,7 +324,109 @@ def make_mail_today2():
 """
 
 # -----------------------------
-# 出力選択 UI（昨日の UI を完全再現）
+# 前日予約（今回追加の4パターン）
+# -----------------------------
+def make_dm_prev1():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_jp[dt.weekday()]
+    # B方式：選択した日付をそのまま使い、「明日」を付ける
+    return f"""ご連絡ありがとうございます。 
+
+明日{dt.strftime('%m月%d日')}（{weekday}）{dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+
+ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。 
+お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。 
+
+（一定時間ご入力が確認できない場合、キャンセル扱いとなってしまいますのでご注意ください。）
+
+▶︎カウンセリングフォーム 
+https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform 
+
+カウンセリングフォームへの入力が済みましたら、一度ご連絡頂けましたら幸いです。
+
+お会いできるのを楽しみにしています。
+
+よろしくお願いいたします。
+"""
+
+def make_dm_prev2():
+    return f"""カウンセリングフォームへのご記入、ありがとうございました☺️
+
+ご予約を確定させていただきます。
+
+{make_reservation_info()}
+
+★明日ホテルに到着されましたら 
+ホテル名とお部屋番号をご連絡ください。 
+
+早めにお知らせいただけますと、スムーズにお伺いすることができます。 
+
+ご不明な点がございましたら、どうぞお気軽にご連絡ください。 
+
+お会いできるのを心より楽しみにしております。 
+よろしくお願い致します♡ 
+"""
+
+def make_mail_prev1():
+    dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_jp[dt.weekday()]
+    subject = "件名： 仮予約のご案内（要確認）/むぎ茶"
+    return f"""{subject}
+
+{inp_name} 様
+
+
+ご連絡ありがとうございます。 
+
+明日{dt.strftime('%m月%d日')}（{weekday}）{dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
+
+ご予約の確定には、以下のカウンセリングフォームのご記入が必要となります。 
+お手数をおかけいたしますが、ご確認のうえご記入をお願いいたします。 
+
+（一定時間ご入力が確認できない場合、キャンセル扱いとなってしまいますのでご注意ください。）
+
+▶︎カウンセリングフォーム 
+https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS2mwqqwcmhw/viewform 
+
+カウンセリングフォームへの入力が済みましたら、一度ご連絡頂けましたら幸いです。
+
+お会いできるのを楽しみにしています。
+
+よろしくお願いいたします。
+
+
+むぎ茶
+"""
+
+def make_mail_prev2():
+    dt = datetime.combine(inp_date, inp_time)
+    subject = f"件名： 【確定】ご予約についてのご案内（{dt.strftime('%m月%d日 %H:%M')}〜）/むぎ茶"
+    return f"""{subject}
+
+{inp_name} 様
+
+カウンセリングフォームへのご記入、ありがとうございました☺️
+
+ご予約を確定させていただきます。
+
+{make_reservation_info()}
+
+★明日ホテルに到着されましたら 
+ホテル名とお部屋番号をご連絡ください。 
+
+早めにお知らせいただけますと、スムーズにお伺いすることができます。 
+
+ご不明な点がございましたら、どうぞお気軽にご連絡ください。 
+
+お会いできるのを心より楽しみにしております。 
+よろしくお願い致します♡ 
+
+
+むぎ茶
+"""
+
+# -----------------------------
+# 出力選択 UI（全テンプレ）
 # -----------------------------
 st.markdown("---")
 st.subheader("■ 出力選択")
@@ -345,6 +445,10 @@ choice = st.selectbox(
         "【当日予約】DM②カウンセリング後",
         "【当日予約】メール①最初",
         "【当日予約】メール②カウンセリング後",
+        "＜前日予約＞DM①最初",
+        "＜前日予約＞DM②カウンセリング後",
+        "＜前日予約＞メール①最初",
+        "＜前日予約＞メール②カウンセリング後",
     ]
 )
 
@@ -372,10 +476,17 @@ if st.button("生成"):
         out_text = make_dm_today2()
     elif choice == "【当日予約】メール①最初":
         out_text = make_mail_today1()
-    else:
+    elif choice == "【当日予約】メール②カウンセリング後":
         out_text = make_mail_today2()
+    elif choice == "＜前日予約＞DM①最初":
+        out_text = make_dm_prev1()
+    elif choice == "＜前日予約＞DM②カウンセリング後":
+        out_text = make_dm_prev2()
+    elif choice == "＜前日予約＞メール①最初":
+        out_text = make_mail_prev1()
+    else:  # ＜前日予約＞メール②カウンセリング後
+        out_text = make_mail_prev2()
 
-    # コピー機能つき表示
     escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     html = f"""
     <div>
@@ -398,4 +509,4 @@ if st.button("生成"):
     components.html(html, height=420)
 
 st.markdown("---")
-st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力できます。")
+st.caption("※「その他（特別料金）」選択時は、場所・オプションの追加料金を入力できます。特別追加料金は任意です。")
