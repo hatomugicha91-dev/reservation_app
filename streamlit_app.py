@@ -273,7 +273,6 @@ def make_mail_today1():
 
 {inp_name} 様
 
-
 ご連絡ありがとうございます。 
 
 本日{dt.strftime('%m月%d日')}（{weekday}） {dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
@@ -292,7 +291,6 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 
 よろしくお願いいたします。
 
-
 むぎ茶
 """
 
@@ -301,7 +299,6 @@ def make_mail_today2():
     return f"""{subject}
 
 {inp_name} 様
-
 
 カウンセリングフォームへのご記入、ありがとうございました☺️
 
@@ -318,7 +315,6 @@ def make_mail_today2():
 
 お会いできるのを心より楽しみにしております。 
 よろしくお願い致します♡
-
 
 むぎ茶
 """
@@ -374,7 +370,6 @@ def make_mail_prev1():
 
 {inp_name} 様
 
-
 ご連絡ありがとうございます。 
 
 明日{dt.strftime('%m月%d日')}（{weekday}）{dt.strftime('%H:%M')}〜の{inp_play_time}分枠で、ただいまご予約を仮押さえさせていただいております。
@@ -392,7 +387,6 @@ https://docs.google.com/forms/d/e/1FAIpQLSf0XNC78LSqy8xKGGL6AjlIQGu7Wthi7tbzr-gS
 お会いできるのを楽しみにしています。
 
 よろしくお願いいたします。
-
 
 むぎ茶
 """
@@ -420,7 +414,6 @@ def make_mail_prev2():
 お会いできるのを心より楽しみにしております。 
 よろしくお願い致します♡ 
 
-
 むぎ茶
 """
 
@@ -432,22 +425,64 @@ st.subheader("■ 出力（料金明細 × テンプレ生成）")
 
 col_fee, col_out = st.columns(2)
 
-# 左：料金明細
+# -----------------------------------------
+# ★★★ ここがカード風料金明細（組み込み済み） ★★★
+# -----------------------------------------
 with col_fee:
     st.markdown("### 💰 料金明細（自動計算）")
+
     play_fee, loc_fee, option_fee, total = calc_total(
         inp_play_time, loc_choice, loc_extra, inp_options, option_other_fee, inp_extra_fee
     )
-    st.write(f"プレイ料金：{jpy(play_fee)}")
-    st.write(f"場所料金：{jpy(loc_fee)}  （{loc_choice}）")
-    st.write(f"オプション料金：{jpy(option_fee)}")
+
+    fee_html = f"""
+    <div style="
+        background-color: #ffffff;
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+        margin-bottom: 20px;
+        font-size: 16px;
+        line-height: 1.6;
+    ">
+
+        <div style="margin-bottom: 10px;">
+            <strong>プレイ料金：</strong> {jpy(play_fee)}
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <strong>場所料金：</strong> {jpy(loc_fee)}
+            <span style="color:#666;">（{loc_choice}）</span>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <strong>オプション料金：</strong> {jpy(option_fee)}
+        </div>
+    """
+
     if inp_extra_fee:
-        st.write(f"特別追加料金：{jpy(inp_extra_fee)}")
+        fee_html += f"""
+        <div style="margin-bottom: 10px;">
+            <strong>特別追加料金：</strong> {jpy(inp_extra_fee)}
+        </div>
+        """
 
-    st.markdown("---")
-    st.markdown(f"### 合計：<span style='font-size:26px; color:#e91e63;'>{jpy(total)}</span>", unsafe_allow_html=True)
+    fee_html += f"""
+        <hr style="margin: 14px 0; border-top: 1px solid #ddd;" />
 
+        <div style="font-size: 20px; font-weight: bold; color:#e91e63; text-align:right;">
+            合計：{jpy(total)}
+        </div>
+
+    </div>
+    """
+
+    st.markdown(fee_html, unsafe_allow_html=True)
+
+# -----------------------------------------
 # 右：テンプレ生成＆コピー
+# -----------------------------------------
 with col_out:
     st.markdown("### ✉ テンプレート生成")
     choice = st.selectbox(
@@ -500,7 +535,7 @@ with col_out:
             out_text = make_dm_prev2()
         elif choice == "＜前日予約＞メール①最初":
             out_text = make_mail_prev1()
-        else:  # ＜前日予約＞メール②カウンセリング後
+        else:
             out_text = make_mail_prev2()
 
         escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
