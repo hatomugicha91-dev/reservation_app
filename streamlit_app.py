@@ -1,3 +1,4 @@
+# streamlit_app.py
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime
@@ -8,9 +9,18 @@ st.set_page_config(page_title="予約・DM・メール自動生成", layout="cen
 # マスタデータ（料金等）
 # -----------------------------
 play_prices = {
-    "60": 20000, "90": 25000, "120": 35000, "150": 45000, "180": 55000,
-    "210": 65000, "240": 75000, "270": 85000, "300": 95000, "330": 105000,
-    "オールナイト": 120000, "特殊料金": 0
+    "60": 20000,
+    "90": 25000,
+    "120": 35000,   # ← ここを 35,000 に変更済
+    "150": 45000,
+    "180": 55000,
+    "210": 65000,
+    "240": 75000,
+    "270": 85000,
+    "300": 95000,
+    "330": 105000,
+    "オールナイト": 120000,
+    "特殊料金": 0
 }
 
 option_prices = {
@@ -35,51 +45,49 @@ location_prices = {
     "その他（特別料金）": 0
 }
 
+# -----------------------------
+# 曜日（日本語）
+# -----------------------------
 weekday_jp = ["月", "火", "水", "木", "金", "土", "日"]
 
 # -----------------------------
-# UI レイアウト（左右に分割）
+# UI：基本情報入力
 # -----------------------------
 st.title("予約・DM・メール自動生成ツール")
-left, right = st.columns(2)
 
-# -----------------------------
-# 左側：入力フォーム（反映ボタンなし）
-# -----------------------------
-with left:
-    st.markdown("### ■ 基本情報（入力）")
+st.markdown("### ■ 基本情報入力")
+col1, col2 = st.columns(2)
+
+with col1:
     inp_name = st.text_input("名前", value="")
-
-    st.markdown("### ■ 予約情報（入力）")
-    inp_date = st.date_input("日付", value=datetime.now().date())
-    inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00", "%H:%M").time())
-
     inp_play_time = st.selectbox(
         "プレイ時間（分枠）",
         options=list(play_prices.keys()),
         index=list(play_prices.keys()).index("120")
     )
 
+with col2:
+    inp_date = st.date_input("日付", value=datetime.now().date())
+    inp_time = st.time_input("開始時刻", value=datetime.strptime("15:00", "%H:%M").time())
     loc_choice = st.selectbox(
         "場所（選択）",
         options=list(location_prices.keys()),
         index=list(location_prices.keys()).index("渋谷（道玄坂）")
     )
-
     loc_extra = 0
     if loc_choice == "その他（特別料金）":
         loc_extra = st.number_input("その他（場所）特別料金（¥）", min_value=0, step=100, value=0)
 
-    inp_options = st.multiselect("オプション（複数可）", options=list(option_prices.keys()))
-    option_other_fee = 0
-    if "その他(特別料金)" in inp_options:
-        option_other_fee = st.number_input("オプションのその他（金額 ¥）", min_value=0, step=100, value=0)
+inp_options = st.multiselect("オプション（複数選択可）", options=list(option_prices.keys()))
+option_other_fee = 0
+if "その他(特別料金)" in inp_options:
+    option_other_fee = st.number_input("オプションのその他（金額 ¥）", min_value=0, step=100, value=0)
 
-    inp_extra_fee = st.number_input("特別追加料金（任意 ¥）", min_value=0, step=100, value=0)
-    inp_other_text = st.text_input("その他（任意）", value="")
+inp_extra_fee = st.number_input("特別追加料金（任意 ¥）", min_value=0, step=100, value=0)
+inp_other_text = st.text_input("その他（任意）", value="")
 
 # -----------------------------
-# ヘルパー関数
+# ヘルパー
 # -----------------------------
 def format_options(opts):
     return "・".join([o for o in opts if o != "その他(特別料金)"] +
@@ -96,7 +104,7 @@ def jpy(n):
     return f"¥{int(n):,}"
 
 # -----------------------------
-# 予約情報のみ生成（基本情報は削除済み）
+# 予約情報（共通）
 # -----------------------------
 def make_reservation_info():
     dt = datetime.combine(inp_date, inp_time)
@@ -104,26 +112,32 @@ def make_reservation_info():
     play_fee, loc_fee, option_fee, total = calc_total(
         inp_play_time, loc_choice, loc_extra, inp_options, option_other_fee, inp_extra_fee
     )
+
     lines = []
     lines.append("‐‐‐‐‐‐‐‐")
     lines.append("【ご予約内容】")
-    lines.append(f"{dt.month}月{dt.day}日（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）")
+    lines.append(f"{dt.strftime('%m月%d日')}（{weekday}） {dt.strftime('%H:%M')}〜（{inp_play_time}分枠）")
     lines.append(f"場所：{loc_choice}")
+
     if inp_options:
         lines.append(f"オプション：{format_options(inp_options)}")
+
     if option_other_fee:
         lines.append(f"オプション（その他）　{jpy(option_other_fee)}")
+
     if inp_extra_fee:
         lines.append(f"特別追加料金　　{jpy(inp_extra_fee)}")
+
     if inp_other_text:
         lines.append(f"その他　{inp_other_text}")
+
     lines.append("")
     lines.append(f"合計：{jpy(total)}")
     lines.append("‐‐‐‐‐‐‐‐")
     return "\n".join(lines)
 
 # -----------------------------
-# ▼ 新規 DM・メール（昨日までの仕様そのまま）
+# DM / メール（通常）
 # -----------------------------
 def make_dm1():
     dt = datetime.combine(inp_date, inp_time)
@@ -150,17 +164,37 @@ def make_dm2():
 
 ご質問や追加のご希望などがありましたら、お気軽にお知らせください。
 
+前日にはこちらから最終確認のご連絡を差し上げます。
+なお、当日の無断キャンセルは料金の100%を頂戴しております。
+
 お会いできるのを楽しみにしております。
 引き続きよろしくお願いいたします✨
 """
 
+def make_dm3():
+    return f"""いよいよ明日ですね！前日確認のご連絡です。
+
+{make_reservation_info()}
+
+当日ホテルに到着されましたら
+★ホテル名とお部屋番号をご連絡ください。
+
+早めにお知らせいただけますと、スムーズにお伺いすることができます。
+
+明日お会いできるのを心より楽しみにしています。
+
+どうぞよろしくお願いいたします！
+"""
+
 def make_mail1():
     dt = datetime.combine(inp_date, inp_time)
+    weekday = weekday_jp[dt.weekday()]
     subject = f"件名：仮予約のご案内（{dt.strftime('%Y/%m/%d')} {dt.strftime('%H:%M')}〜）/むぎ茶"
-    header = f"{inp_name} 様\n"
+
     return f"""{subject}
 
-{header}
+{inp_name} 様
+
 {make_dm1()}
 
 むぎ茶
@@ -168,17 +202,30 @@ def make_mail1():
 
 def make_mail2():
     subject = f"件名：【確定】ご予約についてのご案内（{inp_date.strftime('%Y/%m/%d')} {inp_time.strftime('%H:%M')}〜）"
-    header = f"{inp_name} 様\n"
+
     return f"""{subject}
 
-{header}
+{inp_name} 様
+
 {make_dm2()}
 
 むぎ茶
 """
 
+def make_mail3():
+    subject = "件名：前日確認のご案内 /むぎ茶"
+
+    return f"""{subject}
+
+{inp_name} 様
+
+{make_dm3()}
+
+むぎ茶
+"""
+
 # -----------------------------
-# ▼ 当日予約（参考文面完全再現）
+# 当日予約（あなたの参考テキストそのまま）
 # -----------------------------
 def make_dm_today1():
     dt = datetime.combine(inp_date, inp_time)
@@ -279,67 +326,76 @@ def make_mail_today2():
 """
 
 # -----------------------------
-# 右側：テンプレ選択 & 生成
+# 出力選択 UI（昨日の UI を完全再現）
 # -----------------------------
-with right:
-    st.markdown("### ■ 出力テンプレ選択")
+st.markdown("---")
+st.subheader("■ 出力選択")
 
-    choice = st.selectbox(
-        "テンプレを選んでください",
-        [
-            "予約情報",
-            "DM①（最初）",
-            "DM②（カウンセリング後）",
-            "メール①（最初）",
-            "メール②（カウンセリング後）",
-            "【当日予約】DM①最初",
-            "【当日予約】DM②カウンセリング後",
-            "【当日予約】メール①最初",
-            "【当日予約】メール②カウンセリング後",
-        ]
-    )
+choice = st.selectbox(
+    "テンプレを選んでください",
+    [
+        "予約情報",
+        "DM①（最初）",
+        "DM②（カウンセリング後）",
+        "DM③（前日確認）",
+        "メール①（最初）",
+        "メール②（カウンセリング後）",
+        "メール③（前日確認）",
+        "【当日予約】DM①最初",
+        "【当日予約】DM②カウンセリング後",
+        "【当日予約】メール①最初",
+        "【当日予約】メール②カウンセリング後",
+    ]
+)
 
-    if st.button("文章を生成する ✨"):
-        if choice == "予約情報":
-            out_text = make_reservation_info()
-        elif choice == "DM①（最初）":
-            out_text = make_dm1()
-        elif choice == "DM②（カウンセリング後）":
-            out_text = make_dm2()
-        elif choice == "メール①（最初）":
-            out_text = make_mail1()
-        elif choice == "メール②（カウンセリング後）":
-            out_text = make_mail2()
-        elif choice == "【当日予約】DM①最初":
-            out_text = make_dm_today1()
-        elif choice == "【当日予約】DM②カウンセリング後":
-            out_text = make_dm_today2()
-        elif choice == "【当日予約】メール①最初":
-            out_text = make_mail_today1()
-        else:
-            out_text = make_mail_today2()
+# -----------------------------
+# 生成ボタン
+# -----------------------------
+if st.button("生成"):
+    if choice == "予約情報":
+        out_text = make_reservation_info()
+    elif choice == "DM①（最初）":
+        out_text = make_dm1()
+    elif choice == "DM②（カウンセリング後）":
+        out_text = make_dm2()
+    elif choice == "DM③（前日確認）":
+        out_text = make_dm3()
+    elif choice == "メール①（最初）":
+        out_text = make_mail1()
+    elif choice == "メール②（カウンセリング後）":
+        out_text = make_mail2()
+    elif choice == "メール③（前日確認）":
+        out_text = make_mail3()
+    elif choice == "【当日予約】DM①最初":
+        out_text = make_dm_today1()
+    elif choice == "【当日予約】DM②カウンセリング後":
+        out_text = make_dm_today2()
+    elif choice == "【当日予約】メール①最初":
+        out_text = make_mail_today1()
+    else:
+        out_text = make_mail_today2()
 
-        escaped = (out_text.replace("&", "&amp;")
-                           .replace("<", "&lt;")
-                           .replace(">", "&gt;"))
+    # コピー機能つき表示
+    escaped = out_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    html = f"""
+    <div>
+      <textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
+      <button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
+      <span id="copystatus" style="margin-left:10px;"></span>
+    </div>
+    <script>
+      const btn = document.getElementById('copybtn');
+      btn.addEventListener('click', () => {{
+        const textarea = document.getElementById('out');
+        navigator.clipboard.writeText(textarea.value).then(() => {{
+          const s = document.getElementById('copystatus');
+          s.textContent = ' コピーしました ✔';
+          setTimeout(()=> s.textContent = '', 2000);
+        }});
+      }});
+    </script>
+    """
+    components.html(html, height=420)
 
-        html = f"""<div>
-<textarea id="out" style="width:100%;height:320px;">{escaped}</textarea><br/>
-<button id="copybtn" style="padding:8px 12px; font-size:16px;">📋 コピー</button>
-<span id="copystatus" style="margin-left:10px;"></span>
-</div>
-<script>
-const btn = document.getElementById('copybtn');
-btn.addEventListener('click', () => {{
-    const textarea = document.getElementById('out');
-    navigator.clipboard.writeText(textarea.value).then(() => {{
-        const s = document.getElementById('copystatus');
-        s.textContent = ' コピーしました ✔';
-        setTimeout(()=> s.textContent = '', 2000);
-    }});
-}});
-</script>"""
-
-        components.html(html, height=420)
-
-st.caption("※ 金額・文面は自動反映されます。文章生成ボタンだけでOKです。")
+st.markdown("---")
+st.caption("※「その他（特別料金）」選択時は、場所の追加料金を入力できます。")
