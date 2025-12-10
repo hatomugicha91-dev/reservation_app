@@ -1,5 +1,3 @@
-
-あなた:
 # streamlit_app.py
 import streamlit as st
 import streamlit.components.v1 as components
@@ -528,3 +526,4 @@ with col_out:
 
 st.markdown("---")
 st.caption("※「その他（特別料金）」選択時は、場所・オプションの追加料金を入力できます。特別追加料金は任意です。")
+
